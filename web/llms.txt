@@ -1,0 +1,9 @@
+# Gamescope-rs Micro-Compositor
+
+> Valve Gamescope in pure Rust 2024 & WebGPU with AMD FidelityFX FSR 1.0 EASU & RCAS compute shaders.
+
+## Canonical Resources
+
+- Web Demo: https://aphrody.com/gamescope
+- Shaders: https://aphrody.com/gamescope/shaders/
+- WASM Engine: https://aphrody.com/gamescope/gamescope_web_wasm.wasm

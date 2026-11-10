@@ -1,0 +1,3 @@
+User-agent: *
+Allow: /
+Sitemap: https://aphrody.com/gamescope/sitemap.xml
