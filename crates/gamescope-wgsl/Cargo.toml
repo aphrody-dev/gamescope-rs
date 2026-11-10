@@ -1,0 +1,18 @@
+[package]
+name = "gamescope-wgsl"
+version = "0.1.0"
+edition = "2024"
+authors = ["Aphrody / DeepMind Antigravity"]
+description = "Gamescope WGSL compute shaders (FSR 1.0 EASU, RCAS, HDR Compositor) and wgpu pipeline runner"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+gamescope-core = { workspace = true }
+wgpu = { workspace = true }
+bytemuck = { workspace = true }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+pollster = { workspace = true }
+
+[dev-dependencies]
+pollster = { workspace = true }

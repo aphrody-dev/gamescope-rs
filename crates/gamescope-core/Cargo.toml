@@ -1,0 +1,15 @@
+[package]
+name = "gamescope-core"
+version = "0.1.0"
+edition = "2024"
+authors = ["Aphrody / DeepMind Antigravity"]
+description = "Gamescope core micro-compositor frame pacing, scaling math, layer composition, and HDR color science"
+license = "MIT OR Apache-2.0"
+
+[dependencies]
+serde = { workspace = true, optional = true }
+
+[features]
+default = ["std"]
+std = []
+serde = ["dep:serde"]

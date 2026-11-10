@@ -1,0 +1,19 @@
+[package]
+name = "gamescope-cli"
+version = "0.1.0"
+edition = "2024"
+authors = ["Aphrody / DeepMind Antigravity"]
+description = "Gamescope CLI micro-compositor runtime, benchmarker, and window presenter"
+license = "MIT OR Apache-2.0"
+
+[[bin]]
+name = "gamescope-rs"
+path = "src/main.rs"
+
+[dependencies]
+gamescope-core = { workspace = true }
+gamescope-wgsl = { workspace = true }
+wgpu = { workspace = true }
+winit = { workspace = true }
+bytemuck = { workspace = true }
+pollster = { workspace = true }
