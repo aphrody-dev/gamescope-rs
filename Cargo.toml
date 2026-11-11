@@ -10,7 +10,7 @@ members = [
 [workspace.dependencies]
 gamescope-core = { path = "crates/gamescope-core" }
 gamescope-wgsl = { path = "crates/gamescope-wgsl" }
-wgpu = { version = "30.0.0", path = "../wgpu/wgpu" }
+wgpu = { version = "30.0.0", path = "../../third_party/wgpu/wgpu" }
 winit = { version = "0.30.8" }
 bytemuck = { version = "1.22", features = ["derive"] }
 pollster = "0.4"
