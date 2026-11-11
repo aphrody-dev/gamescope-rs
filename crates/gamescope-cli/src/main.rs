@@ -21,6 +21,7 @@ fn main() {
         "info" => cmd_info(),
         "benchmark-upscale" => cmd_benchmark_upscale(&args[2..]),
         "window" => cmd_window(),
+        "serve-web" => cmd_serve_web(&args[2..]),
         _ => print_help(),
     }
 }
@@ -35,6 +36,7 @@ fn print_help() {
     println!("    info                 Enumerate wgpu adapters (RTX 4070 Vulkan / DX12) and hardware limits");
     println!("    benchmark-upscale    Run real 1080p -> 4K EASU + RCAS compute passes on GPU and measure latency");
     println!("    window               Launch interactive micro-compositor window with real-time upscaling");
+    println!("    serve-web            Serve WebGPU/WASM micro-compositor canvas with COOP/COEP headers");
     println!("    help                 Print this help message");
 }
 
@@ -383,4 +385,96 @@ fn cmd_window() {
     event_loop.set_control_flow(ControlFlow::Poll);
     let mut app = GamescopeApp::default();
     event_loop.run_app(&mut app).expect("Error running winit application");
+}
+
+fn cmd_serve_web(args: &[String]) {
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::path::PathBuf;
+
+    let mut port: u16 = std::env::var("PORT")
+        .ok()
+        .and_then(|v| v.parse().ok())
+        .unwrap_or(8080);
+
+    let mut i = 0;
+    while i < args.len() {
+        if args[i] == "--port" && i + 1 < args.len() {
+            port = args[i + 1].parse().unwrap_or(8080);
+            i += 1;
+        }
+        i += 1;
+    }
+
+    let workspace_root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .and_then(|p| p.parent())
+        .map(|p| p.to_path_buf())
+        .unwrap_or_else(|| PathBuf::from("."));
+    let web_dir = workspace_root.join("web");
+    let wasm_dir = workspace_root
+        .join("target")
+        .join("wasm32-unknown-unknown")
+        .join("release");
+
+    let addr = format!("127.0.0.1:{port}");
+    let listener = TcpListener::bind(&addr).expect("Failed to bind gamescope-rs WebGPU HTTP socket");
+    println!("[gamescope-web] Serving pure-Rust WebGPU canvas at http://{addr}");
+
+    for stream in listener.incoming().flatten() {
+        let mut stream = stream;
+        let mut req_buf = [0u8; 4096];
+        let n = stream.read(&mut req_buf).unwrap_or(0);
+        if n == 0 {
+            continue;
+        }
+        let req_line = String::from_utf8_lossy(&req_buf[..n]);
+        let raw_path = req_line
+            .lines()
+            .next()
+            .and_then(|l| l.split_whitespace().nth(1))
+            .unwrap_or("/")
+            .split('?')
+            .next()
+            .unwrap_or("/");
+
+        if raw_path.contains("..") {
+            let _ = stream.write_all(b"HTTP/1.1 400 Bad Request\r\nContent-Length: 11\r\n\r\nBad Request");
+            continue;
+        }
+
+        let (file_path, content_type, coop_headers) = if raw_path == "/" || raw_path == "/index.html" {
+            (web_dir.join("index.html"), "text/html; charset=utf-8", true)
+        } else if raw_path == "/gamescope_web_wasm.wasm" {
+            (wasm_dir.join("gamescope_web_wasm.wasm"), "application/wasm", false)
+        } else {
+            let rel = raw_path.trim_start_matches('/');
+            let ext = rel.rsplit('.').next().unwrap_or("");
+            let ct = match ext {
+                "html" => "text/html; charset=utf-8",
+                "js" | "mjs" => "application/javascript; charset=utf-8",
+                "wasm" => "application/wasm",
+                "css" => "text/css; charset=utf-8",
+                "json" => "application/json; charset=utf-8",
+                _ => "application/octet-stream",
+            };
+            (web_dir.join(rel), ct, false)
+        };
+
+        if let Ok(bytes) = std::fs::read(&file_path) {
+            let extra = if coop_headers {
+                "Cross-Origin-Opener-Policy: same-origin\r\nCross-Origin-Embedder-Policy: require-corp\r\n"
+            } else {
+                "Cache-Control: no-cache\r\n"
+            };
+            let header = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: {content_type}\r\n{extra}Content-Length: {}\r\nConnection: close\r\n\r\n",
+                bytes.len()
+            );
+            let _ = stream.write_all(header.as_bytes());
+            let _ = stream.write_all(&bytes);
+        } else {
+            let _ = stream.write_all(b"HTTP/1.1 404 Not Found\r\nContent-Length: 9\r\nConnection: close\r\n\r\nNot Found");
+        }
+    }
 }
